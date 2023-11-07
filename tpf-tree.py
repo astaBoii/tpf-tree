@@ -57,13 +57,12 @@ def main():
     json_file = 'output.json'
     csv_to_json(csv_file, json_file)
 
-    # Only display the HTML page after the conversion is successful
-    html_file_path = 'http://localhost:8080/TPFtree.html'
+    # Open the HTML file directly from the local directory
+    html_file_path = os.path.join(os.getcwd(), 'TPFtree.html')
     html_code = f'<iframe src="{html_file_path}" width="8000" height="1700" style="border:none;"></iframe>'
     st.markdown(html_code, unsafe_allow_html=True)
 
-  # Run a simple HTTP server to serve TPFtree.html
-  subprocess.Popen(["python", "-m", "http.server", "8080"])
-
 if __name__ == '__main__':
   main()
+
+
