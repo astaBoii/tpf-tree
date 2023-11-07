@@ -1,7 +1,16 @@
-# Welcome to streamlit
+# d3 collapsible tree demo
+Example of displaying data in a collapsible tree using [D3.js](https://d3js.org/)
 
-This is the app you get when you run `streamlit hello`, extracted as its own app.
+## Demo
 
-Edit [Hello.py](./Hello.py) to customize this app to your heart's desire. ❤️
+[https://kyhau.github.io/d3-collapsible-tree-demo/collapsible_tree.html](https://kyhau.github.io/d3-collapsible-tree-demo/collapsible_tree.html).
 
-Check it out on [Streamlit Community Cloud](https://st-hello-app.streamlit.app/)
+## Run locally
+
+1. Copy `collapsible_tree.html` and `output.json` to the same folder.
+
+2. Run 
+<br>Python 3: `python -m http.server 8080`
+<br>Python 2: `python -m SimpleHTTPServer 8080`
+
+3. URL: localhost:8080/collapsible_tree.html

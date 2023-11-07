@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+
+<style>
+    body {
+        background-color: #fff;
+        background-size: cover;
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+    }
+
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .node {
+        cursor: pointer;
+    }
+
+    .node circle {
+        fill: #ffffff;
+        stroke: rgb(255, 133, 133);
+        stroke-width: 1.5px;
+    }
+
+    .node text {
+        font: 12px "Arial", sans-serif;
+    }
+
+    .link {
+        fill: none;
+        stroke: #e4dddd;
+        stroke-width: 2px;
+        stroke-opacity: 0.5;
+    }
+
+    select {
+        font-size: 16px;
+        padding: 5px;
+        border: 1px solid #f0d2d2;
+        background-color: #fff;
+        color: #333;
+    }
+
+    #outputData {
+        background-color: rgba(255, 255, 255, 0.8);
+        padding: 20px;
+        border-radius: 10px;
+    }
+</style>
+
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+
+    </style>
+</head>
+
+<body>
+    <label for="nodeCount">Number of Nodes to Display:</label>
+    <input type="number" id="nodeCount" min="1" max="100" value="10">
+    <button id="updateButton">Update</button>
+    <img class="legend" src="legend.png" alt="Legend" width="250" height="150">
+    <script src="https://d3js.org/d3.v3.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var margin = { top: 20, right: 120, bottom: 20, left: 120 },
+                canvas_height = 1400,
+                canvas_width = 20000,
+                tree_width = canvas_width - margin.right - margin.left,
+                tree_height = canvas_height - margin.top - margin.bottom,
+                tree_level_depth = 200;
+
+            var i = 0,
+                duration = 750,
+                root;
+
+            var colorScale = d3.scale.category10();
+
+            var tree = d3.layout.tree()
+                .nodeSize([100, 100])
+                .separation(function (a, b) { return a.parent == b.parent ? 1 : 1.25; })
+                .size([tree_height, tree_width]);
+
+            var diagonal = d3.svg.diagonal()
+                .projection(function (d) { return [d.y, d.x]; });
+
+            var svg = d3.select("body").append("svg")
+                .attr("width", canvas_width)
+                .attr("height", canvas_height)
+                .append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            d3.json("output.json", function (error, tree_data) {
+                root = tree_data;
+                root.x0 = tree_height / 2;
+                root.y0 = 0;
+
+                function collapse(d) {
+                    if (d.children) {
+                        d._children = d.children;
+                        d._children.forEach(collapse);
+                        d.children = null;
+                    }
+                }
+
+                root.children.forEach(collapse);
+                update(root);
+            });
+
+            d3.select(self.frameElement).style("height", "1400px");
+
+            function update(source) {
+                var nodes = tree.nodes(root),
+                    links = tree.links(nodes);
+
+                nodes.forEach(function (d) { d.y = d.depth * tree_level_depth; });
+
+                var node = svg.selectAll("g.node")
+                    .data(nodes, function (d) { return d.id || (d.id = ++i); });
+
+                var new_nodes = node.enter().append("g")
+                    .attr("class", "node")
+                    .attr("transform", function (d) { return "translate(" + source.y0 + "," + source.x0 + ")"; })
+                    .on("click", click);
+
+                new_nodes.append("circle")
+                    .attr("r", 1e-6)
+                    .style("fill", function (d) {
+                        return colorScale(d.edge_name);
+                    });
+
+                new_nodes.append("text")
+                    .attr("x", function (d) { return d.children || d._children ? -10 : 10; })
+                    .attr("dy", ".35em")
+                    .attr("text-anchor", function (d) { return d.children || d._children ? "end" : "start"; })
+                    .text(function (d) { return d.name; })
+                    .style("fill-opacity", 1e-6);
+
+                var moved_node = node.transition().duration(duration)
+                    .attr("transform", function (d) { return "translate(" + d.y + "," + d.x + ")"; });
+
+                moved_node.select("circle")
+                    .attr("r", 4.5)
+                    .style("fill", function (d) {
+                        return colorScale(d.edge_name);
+                    });
+
+                moved_node.select("text")
+                    .style("fill-opacity", 1);
+
+                var hidden_nodes = node.exit().transition().duration(duration)
+                    .attr("transform", function (d) { return "translate(" + source.y + "," + source.x + ")"; })
+                    .remove();
+
+                hidden_nodes.select("circle")
+                    .attr("r", 1e-6);
+
+                hidden_nodes.select("text")
+                    .style("fill-opacity", 1e-6);
+
+                var link = svg.selectAll("path.link")
+                    .data(links, function (d) { return d.target.id; });
+
+                link.enter().insert("path", "g")
+                    .attr("class", "link")
+                    .style("stroke", function (d) {
+                        return colorScale(d.target.edge_name);
+                    })
+                    .attr("d", function (d) {
+                        var o = { x: source.x0, y: source.y0 };
+                        return diagonal({ source: o, target: o });
+                    })
+                    .append("svg:title")
+                    .text(function (d, i) { return d.target.edge_name; });
+
+                link.transition().duration(duration)
+                    .style("stroke", function (d) {
+                        return colorScale(d.target.edge_name);
+                    })
+                    .attr("d", diagonal);
+
+                link.exit().transition().duration(duration)
+                    .attr("d", function (d) {
+                        var o = { x: source.x, y: source.y };
+                        return diagonal({ source: o, target: o });
+                    })
+                    .remove();
+
+                nodes.forEach(function (d) {
+                    d.x0 = d.x;
+                    d.y0 = d.y;
+                });
+
+                svg.selectAll(".node").on("mouseover", function (d) {
+                    if (d.children || d._children) {
+                        d3.select(this).select('circle').transition()
+                            .duration(300)
+                            .attr('r', 6);
+                    }
+                }).on("mouseout", function (d) {
+                    if (d.children || d._children) {
+                        d3.select(this).select('circle').transition()
+                            .duration(300)
+                            .attr('r', 4.5);
+                    }
+                });
+            }
+
+            function click(d) {
+                if (d.children) {
+                    d._children = d.children;
+                    d.children = null;
+                } else {
+                    d.children = d._children;
+                    d._children = null;
+                }
+                update(d);
+
+                d3.select(this).select("circle")
+                    .style("fill", function (d) {
+                        return d.children || d._children ? "white" : "red";
+                    });
+            }
+
+            document.getElementById("updateButton").addEventListener("click", function () {
+                var nodeCount = parseInt(document.getElementById("nodeCount").value);
+                filterData(root, nodeCount);
+                update(root);
+            });
+
+            function filterData(node, maxNodeCount) {
+                if (node.children) {
+                    if (node.children.length > maxNodeCount) {
+                        node._children = node.children.slice(maxNodeCount);
+                        node.children = node.children.slice(0, maxNodeCount);
+                    }
+                    node.children.forEach(function (child) {
+                        filterData(child, maxNodeCount);
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
